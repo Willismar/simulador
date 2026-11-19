@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Simulador de preguntas</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f6b55">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Simulador">
+<style>
+:root{--bg:#f3f5f2;--card:#fff;--tx:#1d2a26;--mu:#5d6b66;--ac:#0f6b55;--acx:#fff;--bd:#d5dcd8;--ok:#1b7f4b;--bad:#b3261e;--okb:#e0f3e8;--badb:#fbe4e2}
+@media(prefers-color-scheme:dark){:root{--bg:#121816;--card:#1b2420;--tx:#e8efec;--mu:#9aaaa4;--ac:#4fc3a1;--acx:#08241c;--bd:#33423c;--ok:#5fd493;--bad:#ff8a80;--okb:#183a29;--badb:#40201d}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:16px/1.5 Georgia,"Times New Roman",serif}
+main{max-width:760px;margin:0 auto;padding:16px}
+h1{font-size:1.6rem;margin:8px 0 16px}h2{font-size:1.2rem;margin:0 0 12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:16px;margin-bottom:14px}
+button,input,textarea,select{font:inherit;color:inherit}
+button{background:var(--ac);color:var(--acx);border:0;border-radius:8px;padding:10px 16px;cursor:pointer}
+button.s{background:transparent;color:var(--tx);border:1px solid var(--bd)}
+button.d{background:transparent;color:var(--bad);border:1px solid var(--bd)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{outline:3px solid var(--ac);outline-offset:2px}
+input[type=text],input[type=password],textarea,select{width:100%;padding:10px;border:1px solid var(--bd);border-radius:8px;background:var(--bg);margin-bottom:8px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>input[type=text]{flex:1;min-width:150px;margin:0}
+.tabs{display:flex;gap:6px;margin-bottom:14px}.tabs button{flex:1}
+.mu{color:var(--mu);font-size:.9rem}
+.opt{display:block;width:100%;text-align:left;margin:8px 0;background:var(--bg);color:var(--tx);border:1px solid var(--bd)}
+.opt.ok{background:var(--okb);border-color:var(--ok)}.opt.bad{background:var(--badb);border-color:var(--bad)}
+.q{display:flex;gap:8px;justify-content:space-between;align-items:flex-start;border-top:1px solid var(--bd);padding:10px 0}
+.oi{display:flex;gap:8px;align-items:center}.oi input[type=text]{margin:0}
+.big{font-size:3rem;font-weight:bold;color:var(--ac);line-height:1}
+.hide{display:none}
+.sq{padding:12px 0;border-top:1px solid var(--bd);cursor:default}
+.sq.tap{cursor:pointer}
+.so{padding:6px 10px;margin:6px 0;border:1px solid var(--bd);border-radius:8px;background:var(--bg)}
+.sq.rev .so.c{background:var(--okb);border-color:var(--ok);font-weight:bold}
+.top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px}.top h1{margin:0}
+</style>
+</head>
+<body>
+<main>
+<!-- PANTALLA 1: SIMULADOR -->
+<div id="v1">
+  <div class="top"><h1>Simulador</h1><div class="row"><button class="hide" id="install">Instalar app</button><button class="s" id="toAdmin">Administrar</button></div></div>
+  <div class="card">
+    <label for="subj" class="mu">Elige la asignatura</label>
+    <select id="subj" style="margin-top:6px"></select>
+    <p class="mu" id="count" style="margin:0"></p>
+    <p class="mu" id="cloud" style="margin:4px 0 0"></p>
+  </div>
+  <div class="card" id="start">
+    <h2>Iniciar simulador</h2>
+    <p class="mu">Salen hasta 15 preguntas al azar, con las opciones mezcladas. La nota es sobre 30 puntos.</p>
+    <div class="row"><button id="go">Empezar simulador</button><button class="s" id="study">Repasar todas las preguntas</button></div>
+  </div>
+  <div class="card hide" id="quiz"></div>
+  <div class="card hide" id="studyBox">
+    <div class="top"><h2 style="margin:0">Repasar preguntas</h2><button class="s" id="closeStudy">Cerrar</button></div>
+    <input type="text" id="sq" placeholder="Buscar una palabra en las preguntas" aria-label="Buscar">
+    <label class="mu" style="display:block;margin-bottom:8px"><input type="checkbox" id="hideAns"> Ocultar respuestas (toca una pregunta para verla)</label>
+    <p class="mu" id="sinfo"></p>
+    <div id="studyList"></div>
+  </div>
+</div>
+
+<!-- PANTALLA 2: ADMINISTRAR -->
+<div id="v2" class="hide">
+  <div class="top"><h1>Administrar</h1><div class="row"><button class="s hide" id="logout">Cerrar sesión</button><button class="s" id="toSim">Volver al simulador</button></div></div>
+  <p class="mu" id="who" style="margin:0 0 12px"></p>
+  <div class="card hide" id="login">
+    <h2>Acceso de administrador</h2>
+    <input type="text" id="lemail" placeholder="Correo" autocomplete="username" inputmode="email">
+    <input type="password" id="lpass" placeholder="Clave" autocomplete="current-password">
+    <button id="loginBtn">Entrar</button>
+    <p id="lerr" style="color:var(--bad);margin:8px 0 0"></p>
+  </div>
+  <div id="adminBox" class="hide">
+  <div class="card hide" id="migrate"><h2>Subir datos a la nube</h2><p class="mu">Este dispositivo tiene asignaturas guardadas y la nube está vacía.</p><button id="doMig">Subir a la nube</button></div>
+  <div class="card">
+    <h2>Asignaturas</h2>
+    <label for="subj2" class="mu">Asignatura seleccionada</label>
+    <div class="row" style="margin-top:6px">
+      <select id="subj2" style="flex:1;margin:0"></select>
+      <button class="d" id="delSubj">Eliminar</button>
+    </div>
+    <p class="mu" id="count2"></p>
+    <div class="row">
+      <input type="text" id="newSubj" placeholder="Nombre de la nueva asignatura">
+      <button id="addSubj">Crear asignatura</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button id="t2">Agregar preguntas</button><button class="s" id="t3">Importar y copia</button>
+  </div>
+
+  <section id="p2">
+    <div class="card">
+      <h2 id="formTitle">Nueva pregunta</h2>
+      <textarea id="qt" rows="2" placeholder="Escribe la pregunta"></textarea>
+      <div id="opts"></div>
+      <p class="mu">Marca el círculo de la respuesta correcta.</p>
+      <div class="row"><button id="saveQ">Guardar pregunta</button><button class="s hide" id="cancelQ">Cancelar edición</button></div>
+    </div>
+    <div class="card"><h2>Preguntas de esta asignatura</h2><div id="list"></div></div>
+  </section>
+
+  <section id="p3" class="hide">
+    <div class="card">
+      <h2>Importar desde Word, PDF o texto</h2>
+      <p class="mu">Sube un archivo .docx, .pdf o .txt, o pega el texto. Formato esperado por pregunta:</p>
+      <pre class="mu" style="white-space:pre-wrap;margin:0 0 10px">1. ¿Capital de Ecuador?
+A) Guayaquil
+B) Quito
+C) Cuenca
+D) Loja
+Respuesta: B</pre>
+      <input type="file" id="file" accept=".docx,.pdf,.txt" style="margin-bottom:8px">
+      <textarea id="paste" rows="8" placeholder="O pega aquí las preguntas"></textarea>
+      <button id="parse">Revisar preguntas</button>
+      <p class="mu" id="pmsg"></p>
+      <div id="prev"></div>
+      <button class="hide" id="confirm">Agregar a la asignatura</button>
+    </div>
+    <div class="card">
+      <h2>Copia de seguridad</h2>
+      <p class="mu">Tus datos se guardan en este dispositivo. Para pasarlos de la PC al celular, exporta y luego importa el archivo.</p>
+      <div class="row"><button class="s" id="exp">Exportar copia</button>
+      <input type="file" id="imp" accept=".json"></div>
+    </div>
+  </section>
+  </div>
+</div>
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+const $=id=>document.getElementById(id);
+const KEY='simulador_v1';
+let db={subjects:[],cur:null};
+try{const r=localStorage.getItem(KEY);if(r)db=JSON.parse(r)}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){alert('No se pudo guardar en este navegador.')}};
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const cur=()=>db.subjects.find(s=>s.id===db.cur);
+const LET=['A','B','C','D'];
+
+function tab(n){[2,3].forEach(i=>{$('p'+i).classList.toggle('hide',i!==n);$('t'+i).classList.toggle('s',i!==n)})}
+[2,3].forEach(i=>$('t'+i).onclick=()=>tab(i));
+
+function render(){
+  if(!cur()&&db.subjects.length)db.cur=db.subjects[0].id;
+  const opts=db.subjects.length?db.subjects.map(x=>`<option value="${x.id}">${esc(x.name)}</option>`).join(''):'<option value="">Sin asignaturas</option>';
+  ['subj','subj2'].forEach(id=>{$(id).innerHTML=opts;if(db.cur)$(id).value=db.cur});
+  const s=cur(),n=s?s.questions.length:0;
+  $('count').textContent=s?`${n} pregunta(s) disponibles`:'Aún no hay asignaturas. Créalas en Administrar.';
+  $('count2').textContent=s?`${n} pregunta(s) guardadas`:'Crea tu primera asignatura para empezar.';
+  $('list').innerHTML=s&&s.questions.length?s.questions.map((q,i)=>`<div class="q"><div><b>${i+1}.</b> ${esc(q.q)}<div class="mu">Correcta: ${LET[q.c]}) ${esc(q.o[q.c])}</div></div><div class="row" style="flex-shrink:0"><button class="s" data-edit="${q.id}">Editar</button><button class="d" data-del="${q.id}">Borrar</button></div></div>`).join(''):'<p class="mu">Aún no hay preguntas. Agrégalas arriba o impórtalas.</p>';
+  save();
+}
+['subj','subj2'].forEach(id=>$(id).onchange=e=>{db.cur=e.target.value;if(editId)setEdit(null);$('quiz').classList.add('hide');closeStudy();$('start').classList.remove('hide');run=null;render()});
+$('addSubj').onclick=()=>{
+  const n=$('newSubj').value.trim();if(!n)return;
+  const s={id:uid(),name:n,questions:[],ts:Date.now()};db.subjects.push(s);db.cur=s.id;$('newSubj').value='';render();cloudSave(s);
+};
+$('delSubj').onclick=()=>{const s=cur();if(s&&confirm(`¿Eliminar "${s.name}" y todas sus preguntas?`)){cloudDel(s.id);db.subjects=db.subjects.filter(x=>x.id!==s.id);db.cur=null;render()}};
+let editId=null;
+function setEdit(id){
+  editId=id;const q=id&&cur().questions.find(x=>x.id===id);
+  $('qt').value=q?q.q:'';
+  LET.forEach((_,i)=>$('o'+i).value=q?q.o[i]:'');
+  document.querySelectorAll('input[name=cor]')[q?q.c:0].checked=true;
+  $('formTitle').textContent=q?'Editar pregunta':'Nueva pregunta';
+  $('saveQ').textContent=q?'Guardar cambios':'Guardar pregunta';
+  $('cancelQ').classList.toggle('hide',!q);
+  if(q){$('qt').focus();window.scrollTo({top:0,behavior:'smooth'})}
+}
+$('cancelQ').onclick=()=>setEdit(null);
+$('list').onclick=e=>{
+  const d=e.target.dataset.del,ed=e.target.dataset.edit;
+  if(ed)setEdit(ed);
+  if(d){if(!confirm('¿Borrar esta pregunta?'))return;const s=cur();s.questions=s.questions.filter(q=>q.id!==d);if(editId===d)setEdit(null);render();cloudSave(s)}
+};
+
+// formulario de pregunta
+$('opts').innerHTML=LET.map((l,i)=>`<div class="oi"><input type="radio" name="cor" value="${i}" ${i?'':'checked'} aria-label="Correcta ${l}"><input type="text" id="o${i}" placeholder="Opción ${l}"></div>`).join('');
+$('saveQ').onclick=()=>{
+  const s=cur();if(!s)return alert('Primero crea una asignatura.');
+  const q=$('qt').value.trim(),o=LET.map((_,i)=>$('o'+i).value.trim());
+  if(!q||o.some(x=>!x))return alert('Escribe la pregunta y las 4 opciones.');
+  const c=+document.querySelector('input[name=cor]:checked').value;
+  if(editId){const x=s.questions.find(k=>k.id===editId);if(x){x.q=q;x.o=o;x.c=c}setEdit(null);render();cloudSave(s);return}
+  s.questions.push({id:uid(),q,o,c});
+  setEdit(null);$('qt').focus();render();cloudSave(s);
+};
+
+// repaso
+function renderStudy(){
+  const s=cur(),t=$('sq').value.trim().toLowerCase(),hide=$('hideAns').checked;
+  const qs=s?s.questions.map((q,i)=>({q,i})).filter(x=>!t||x.q.q.toLowerCase().includes(t)||x.q.o.some(o=>o.toLowerCase().includes(t))):[];
+  $('sinfo').textContent=s?`Mostrando ${qs.length} de ${s.questions.length} preguntas`:'';
+  $('studyList').innerHTML=qs.length?qs.map(({q,i})=>`<div class="sq ${hide?'tap':'rev'}"><b>${i+1}.</b> ${esc(q.q)}${q.o.map((o,k)=>`<div class="so ${k===q.c?'c':''}">${LET[k]}) ${esc(o)}</div>`).join('')}</div>`).join(''):'<p class="mu">No hay preguntas para mostrar.</p>';
+}
+function closeStudy(){$('studyBox').classList.add('hide')}
+$('study').onclick=()=>{
+  const s=cur();if(!s||!s.questions.length)return alert('Esta asignatura no tiene preguntas.');
+  $('start').classList.add('hide');$('quiz').classList.add('hide');$('studyBox').classList.remove('hide');renderStudy();window.scrollTo(0,0);
+};
+$('closeStudy').onclick=()=>{closeStudy();$('start').classList.remove('hide')};
+$('sq').oninput=renderStudy;$('hideAns').onchange=renderStudy;
+$('studyList').onclick=e=>{const q=e.target.closest('.sq.tap');if(q)q.classList.toggle('rev')};
+
+// simulador
+let run=null;
+$('go').onclick=()=>{
+  const s=cur();if(!s||!s.questions.length)return alert('Esta asignatura no tiene preguntas.');
+  const qs=shuffle(s.questions).slice(0,15).map(q=>{
+    const idx=shuffle([0,1,2,3]);
+    return{q:q.q,o:idx.map(i=>q.o[i]),c:idx.indexOf(q.c),a:null};
+  });
+  closeStudy();run={qs,i:0};$('start').classList.add('hide');$('quiz').classList.remove('hide');step();
+};
+function step(){
+  const{qs,i}=run,q=qs[i],box=$('quiz');
+  box.innerHTML=`<p class="mu">Pregunta ${i+1} de ${qs.length}</p><h2>${esc(q.q)}</h2>`+
+   q.o.map((t,k)=>`<button class="opt" data-k="${k}">${LET[k]}) ${esc(t)}</button>`).join('')+'<div id="nx"></div>';
+}
+$('quiz').onclick=e=>{
+  const b=e.target.closest('.opt');
+  if(b&&run&&run.qs[run.i].a===null){
+    const q=run.qs[run.i];q.a=+b.dataset.k;
+    document.querySelectorAll('.opt').forEach((x,k)=>{x.disabled=true;if(k===q.c)x.classList.add('ok');else if(k===q.a)x.classList.add('bad')});
+    $('nx').innerHTML=`<button id="next">${run.i+1<run.qs.length?'Siguiente':'Ver resultado'}</button>`;
+  }
+  if(e.target.id==='next'){run.i++;run.i<run.qs.length?step():finish()}
+  if(e.target.id==='again'){$('quiz').classList.add('hide');$('start').classList.remove('hide')}
+};
+function finish(){
+  const n=run.qs.length,ok=run.qs.filter(q=>q.a===q.c).length,nota=(ok*30/n).toFixed(1).replace('.0','');
+  $('quiz').innerHTML=`<h2>Resultado</h2><div class="big">${nota} / 30</div><p>${ok} correctas de ${n}.</p>`+
+   run.qs.map((q,i)=>`<div class="q"><div><b>${i+1}.</b> ${esc(q.q)}<div class="mu">${q.a===q.c?'Correcta':'Incorrecta'}. Respuesta: ${LET[q.c]}) ${esc(q.o[q.c])}${q.a!==q.c?`<br>Tu respuesta: ${LET[q.a]}) ${esc(q.o[q.a])}`:''}</div></div></div>`).join('')+
+   '<p><button id="again">Volver a intentar</button></p>';
+  run=null;
+}
+
+// importación
+let pending=[];
+function parseText(t){
+  const lines=t.replace(/\r/g,'').split('\n').map(l=>l.trim()).filter(Boolean),out=[];let c=null;
+  const push=()=>{if(c&&c.o.length===4&&c.q&&c.c>=0)out.push({id:uid(),q:c.q.trim(),o:c.o.map(x=>x.trim()),c:c.c});c=null};
+  const numRe=/^\d+\s*[\.\)\-]\s*/;
+  for(const l of lines){
+    const am=l.match(/^(?:respuesta(?: correcta)?|correcta|answer|clave)\s*[:\-.]?\s*\(?([A-Da-d])\b/i);
+    if(am){if(c)c.c=LET.indexOf(am[1].toUpperCase());push();continue}
+    const om=l.match(/^\(?([A-Da-d])[\)\.\-]\s*(.*)/);
+    if(c&&c.o.length<4&&om&&om[1].toUpperCase()===LET[c.o.length]){c.o.push(om[2]);continue}
+    const num=numRe.test(l);
+    if(!c||(num&&(c.o.length===0||c.o.length===4))){c={q:l.replace(numRe,''),o:[],c:-1};continue}
+    // línea de continuación: se une a la pregunta o a la última opción
+    if(c.o.length===0)c.q+=' '+l;else c.o[c.o.length-1]+=' '+l;
+  }
+  push();return out;
+}
+async function readFile(f){
+  const n=f.name.toLowerCase();
+  if(n.endsWith('.docx')){return (await mammoth.extractRawText({arrayBuffer:await f.arrayBuffer()})).value}
+  if(n.endsWith('.pdf')){
+    pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    const pdf=await pdfjsLib.getDocument({data:await f.arrayBuffer()}).promise;let t='';
+    for(let p=1;p<=pdf.numPages;p++){
+      const items=(await(await pdf.getPage(p)).getTextContent()).items;let y=null;
+      for(const it of items){const yy=Math.round(it.transform[5]);if(y!==null&&Math.abs(yy-y)>2)t+='\n';t+=it.str+' ';y=yy}
+      t+='\n';
+    }
+    return t;
+  }
+  return await f.text();
+}
+$('file').onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;$('pmsg').textContent='Leyendo archivo...';
+  try{$('paste').value=await readFile(f);$('pmsg').textContent='Archivo leído. Pulsa "Revisar preguntas".'}
+  catch(err){$('pmsg').textContent='No se pudo leer el archivo. Pega el texto manualmente.'}
+};
+$('parse').onclick=()=>{
+  pending=parseText($('paste').value);
+  $('pmsg').textContent=pending.length?`Se detectaron ${pending.length} pregunta(s). Revisa y confirma.`:'No se detectó ninguna pregunta. Revisa que cada una tenga 4 opciones (A a D) y la línea "Respuesta: X".';
+  $('prev').innerHTML=pending.map((q,i)=>`<div class="q"><div><b>${i+1}.</b> ${esc(q.q)}<div class="mu">${q.o.map((o,k)=>(k===q.c?'✔ ':'')+LET[k]+') '+esc(o)).join(' | ')}</div></div></div>`).join('');
+  $('confirm').classList.toggle('hide',!pending.length);
+};
+$('confirm').onclick=()=>{
+  const s=cur();if(!s)return alert('Primero crea una asignatura.');
+  const have=new Set(s.questions.map(q=>q.q.toLowerCase()));
+  const nuevas=pending.filter(q=>!have.has(q.q.toLowerCase()));
+  s.questions.push(...nuevas);cloudSave(s);
+  $('pmsg').textContent=`Agregadas ${nuevas.length}. Repetidas omitidas: ${pending.length-nuevas.length}.`;
+  pending=[];$('prev').innerHTML='';$('paste').value='';$('confirm').classList.add('hide');render();
+};
+
+// copia de seguridad
+$('exp').onclick=()=>{
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([JSON.stringify(db)],{type:'application/json'}));
+  a.download='simulador-copia.json';a.click();
+};
+$('imp').onchange=async e=>{
+  try{const d=JSON.parse(await e.target.files[0].text());
+    if(!Array.isArray(d.subjects))throw 0;
+    if(confirm('Esto reemplaza todas las asignaturas y preguntas. ¿Continuar?')){const old=db.subjects.map(x=>x.id);d.subjects.forEach((x,i)=>{x.ts=x.ts||Date.now()+i});db=d;render();old.filter(id=>!d.subjects.some(x=>x.id===id)).forEach(cloudDel);d.subjects.forEach(cloudSave)}
+  }catch(err){alert('Archivo no válido.')}
+};
+// ===== NUBE (Firebase) =====
+const FIREBASE_CONFIG={apiKey:"AIzaSyAUvMWFnuaNXmyh7rjvLPNgjtiS0qQWYGM",authDomain:"tecnico-pro.firebaseapp.com",projectId:"tecnico-pro",storageBucket:"tecnico-pro.firebasestorage.app",messagingSenderId:"883534120062",appId:"1:883534120062:web:72b5343763fd1d3582442f"};
+const CLOUD=!FIREBASE_CONFIG.apiKey.startsWith('PEGA');
+const MIG='simulador_migrado';
+let fdb=null,fauth=null,canMigrate=false;
+const cloudMsg=t=>$('cloud').textContent=t;
+const cloudErr=e=>alert('No se pudo guardar en la nube: '+e.message);
+function cloudSave(s){if(!CLOUD||!s)return;fdb.collection('asignaturas').doc(s.id).set({name:s.name,questions:s.questions,ts:s.ts||Date.now()}).catch(cloudErr)}
+function cloudDel(id){if(!CLOUD)return;fdb.collection('asignaturas').doc(id).delete().catch(cloudErr)}
+function updAdmin(){
+  const ok=!CLOUD||!!(fauth&&fauth.currentUser);
+  $('login').classList.toggle('hide',ok);$('adminBox').classList.toggle('hide',!ok);
+  $('logout').classList.toggle('hide',!CLOUD||!ok);
+  $('who').textContent=!CLOUD?'Modo local: Firebase sin configurar, por eso no se pide clave ni hay cerrar sesión.':(ok?'Sesión iniciada como '+fauth.currentUser.email:'');$('migrate').classList.toggle('hide',!(ok&&canMigrate));
+}
+if(CLOUD){
+  try{
+    firebase.initializeApp(FIREBASE_CONFIG);fdb=firebase.firestore();fauth=firebase.auth();
+    cloudMsg('Conectando con la nube...');
+    fdb.collection('asignaturas').onSnapshot(snap=>{
+      if(snap.empty&&db.subjects.length&&!localStorage.getItem(MIG)){canMigrate=true}
+      else{
+        db.subjects=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(a.ts||0)-(b.ts||0));
+        canMigrate=false;
+      }
+      cloudMsg(snap.metadata.fromCache?'Sin conexión: mostrando datos guardados.':'Sincronizado con la nube.');
+      render();updAdmin();
+    },err=>cloudMsg('Sin conexión con la nube: '+err.message));
+    fauth.onAuthStateChanged(updAdmin);
+  }catch(e){cloudMsg('Error al iniciar Firebase: '+e.message)}
+}else cloudMsg('Modo local: Firebase sin configurar.');
+$('loginBtn').onclick=async()=>{
+  try{await fauth.signInWithEmailAndPassword($('lemail').value.trim(),$('lpass').value);$('lpass').value='';$('lerr').textContent=''}
+  catch(e){$('lerr').textContent='Correo o clave incorrectos.'}
+};
+$('lpass').onkeydown=e=>{if(e.key==='Enter')$('loginBtn').click()};
+$('logout').onclick=()=>fauth.signOut();
+$('doMig').onclick=async()=>{
+  try{const b=fdb.batch();db.subjects.forEach((x,i)=>b.set(fdb.collection('asignaturas').doc(x.id),{name:x.name,questions:x.questions,ts:x.ts||Date.now()+i}));await b.commit();localStorage.setItem(MIG,'1');canMigrate=false;updAdmin();alert('Datos subidos a la nube.')}
+  catch(e){cloudErr(e)}
+};
+
+// ===== INSTALAR COMO APP =====
+let instEv=null;
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();instEv=e;$('install').classList.remove('hide')});
+$('install').onclick=async()=>{if(!instEv)return;instEv.prompt();await instEv.userChoice;instEv=null;$('install').classList.add('hide')};
+window.addEventListener('appinstalled',()=>$('install').classList.add('hide'));
+if('serviceWorker' in navigator&&location.protocol.startsWith('http'))navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+function view(){
+  const adm=location.hash==='#admin';
+  $('v1').classList.toggle('hide',adm);$('v2').classList.toggle('hide',!adm);
+  if(adm){run=null;closeStudy();$('quiz').classList.add('hide');$('start').classList.remove('hide')}
+  else if(editId)setEdit(null);
+  render();updAdmin();window.scrollTo(0,0);
+}
+$('toAdmin').onclick=()=>{location.hash='admin'};
+$('toSim').onclick=()=>{location.hash='sim'};
+window.addEventListener('hashchange',view);
+view();
+</script>
+</body>
+</html>
